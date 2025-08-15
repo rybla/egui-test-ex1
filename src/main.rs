@@ -18,9 +18,9 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native(
-        "eframe template",
+        "egui-test-ex1",
         native_options,
-        Box::new(|cc| Ok(Box::new(egui_test_ex1::TemplateApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(egui_test_ex1::app::tree_nav::Content::new(cc)))),
     )
 }
 
@@ -50,7 +50,7 @@ fn main() {
             .start(
                 canvas,
                 web_options,
-                Box::new(|cc| Ok(Box::new(egui_test_ex1::TemplateApp::new(cc)))),
+                Box::new(|cc| Ok(Box::new(egui_test_ex1::KeyboardExample::new(cc)))),
             )
             .await;
 
