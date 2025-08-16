@@ -50,7 +50,7 @@ fn main() {
             .start(
                 canvas,
                 web_options,
-                Box::new(|cc| Ok(Box::new(egui_test_ex1::KeyboardExample::new(cc)))),
+                Box::new(|cc| Ok(Box::new(egui_test_ex1::app::tree_nav::Content::new(cc)))),
             )
             .await;
 

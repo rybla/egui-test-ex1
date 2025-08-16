@@ -1,4 +1,29 @@
+use std::rc::Rc;
+
 // -----------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+pub enum List<A> {
+    Nil,
+    Cons(A, Rc<List<A>>),
+}
+
+impl<A> List<A> {
+    fn is_empty(&self) -> bool {
+        match self {
+            List::Nil => true,
+            _ => false,
+        }
+    }
+}
+
+pub type Path = List<usize>;
+
+impl<A> Default for List<A> {
+    fn default() -> Self {
+        Self::Nil
+    }
+}
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub enum Tree {
@@ -19,22 +44,25 @@ impl Tree {
         } else {
             let t = Self::big(branching_factor, depth - 1);
             let mut branches = vec![];
-            for i in 0..branching_factor {
+            for _i in 0..branching_factor {
                 branches.push(t.clone());
             }
             Self::Branch(depth, branches)
         }
     }
-}
 
-pub type Path = Vec<usize>;
-
-// -----------------------------------------------------------------------------
-
-fn snoc(path_init: &Path, step: usize) -> Path {
-    let mut path = path_init.clone();
-    path.push(step);
-    path
+    fn get_subtree(&self, path: &Path) -> Option<&Self> {
+        match path {
+            List::Nil => Option::Some(self),
+            List::Cons(h, path) => match self {
+                Tree::Leaf => None,
+                Tree::Branch(_, ts) => match ts.get(*h) {
+                    None => None,
+                    Some(t) => t.get_subtree(path),
+                },
+            },
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -43,13 +71,11 @@ fn snoc(path_init: &Path, step: usize) -> Path {
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct Content {
     root: Tree,
-    cursor: Path,
+    cursor: Rc<Path>,
 }
 
 impl Content {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        use Tree::*;
-
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
 
@@ -63,21 +89,50 @@ impl Content {
 
         Self {
             root: Tree::big(2, 8),
-            cursor: vec![],
+            cursor: Rc::new(List::Nil),
         }
     }
 
-    fn render_root(&mut self, ui: &mut egui::Ui) {
-        ui.scope(|ui| self.render_tree(ui, vec![], &self.root.clone()));
+    pub fn get_cursor_tree(&self) -> &Tree {
+        let cursor = self.cursor.clone();
+        let root = self.root.clone();
+        todo!()
     }
 
-    fn render_tree(&mut self, ui: &mut egui::Ui, path: Path, t: &Tree) {
+    // fn move_forward(&mut self) {}
+    // fn move_backward(&mut self) {}
+
+    pub fn move_right(&mut self) {}
+
+    pub fn move_left(&mut self) {}
+
+    pub fn move_down(&mut self) {}
+
+    pub fn move_up(&mut self) {}
+
+    fn render_root(&mut self, ui: &mut egui::Ui) {
+        let cursor = self.cursor.clone();
+        let root = self.root.clone();
+        ui.scope(|ui| self.render_tree(ui, Option::Some(cursor), Rc::new(List::Nil), &root));
+    }
+
+    fn render_tree(
+        &mut self,
+        ui: &mut egui::Ui,
+        opt_cursor: Option<Rc<Path>>,
+        path: Rc<Path>,
+        t: &Tree,
+    ) {
         match t {
             Tree::Leaf => {}
             Tree::Branch(x, ts) => {
+                let is_cursor = match &opt_cursor {
+                    Some(cursor) => cursor.is_empty(),
+                    None => false,
+                };
                 egui::Frame::default()
                     .inner_margin(12)
-                    .stroke(if self.cursor == path {
+                    .stroke(if is_cursor {
                         egui::Stroke::new(1.0, egui::Color32::RED)
                     } else {
                         egui::Stroke::new(1.0, egui::Color32::GRAY)
@@ -88,7 +143,12 @@ impl Content {
                             self.cursor = path.clone()
                         }
                         for (step, t) in ts.iter().enumerate() {
-                            self.render_tree(ui, snoc(&path, step), t);
+                            self.render_tree(
+                                ui,
+                                opt_cursor.clone(),
+                                Rc::new(List::Cons(step, path.clone())),
+                                t,
+                            );
                         }
                     });
             }
@@ -107,8 +167,14 @@ impl eframe::App for Content {
                     self.render_root(ui);
                 });
 
-            if ctx.input(|i| i.key_pressed(egui::Key::A)) {
-                println!("key pressed: A");
+            if ctx.input(|i| i.key_pressed(egui::Key::ArrowLeft)) {
+                self.move_left();
+            } else if ctx.input(|i| i.key_pressed(egui::Key::ArrowRight)) {
+                self.move_right();
+            } else if ctx.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
+                self.move_up();
+            } else if ctx.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
+                self.move_down();
             }
         });
     }
