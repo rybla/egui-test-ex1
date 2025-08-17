@@ -147,7 +147,8 @@ impl Content {
     // fn move_forward(&mut self) {}
     // fn move_backward(&mut self) {}
 
-    pub fn move_right(&mut self) {}
+    pub fn move_right(&mut self) {
+    }
 
     pub fn move_left(&mut self) {}
 
