@@ -25,6 +25,51 @@ impl<A> Default for List<A> {
     }
 }
 
+impl<A> List<A> {
+    pub fn new() -> Self {
+        List::Nil
+    }
+}
+
+pub struct ListIter<'a, A>(&'a List<A>);
+
+impl<'a, A> Iterator for ListIter<'a, A> {
+    type Item = &'a A;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match &self.0 {
+            List::Nil => None,
+            List::Cons(head, tail) => {
+                self.0 = tail;
+                Some(head)
+            }
+        }
+    }
+}
+
+impl<'a, A> IntoIterator for &'a List<A> {
+    type Item = &'a A;
+    type IntoIter = ListIter<'a, A>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        ListIter(self)
+    }
+}
+
+impl<A: Clone> List<A> {
+    fn iter<'a>(&'a self) -> ListIter<'a, A> {
+        ListIter(self)
+    }
+
+    fn reverse(&self) -> List<A> {
+        let mut reversed: Rc<List<A>> = Rc::new(List::Nil);
+        for x in self.iter() {
+            reversed = Rc::new(List::Cons(x.clone(), reversed));
+        }
+        (*reversed).clone()
+    }
+}
+
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub enum Tree {
     Leaf,
@@ -119,14 +164,14 @@ impl Content {
     fn render_tree(
         &mut self,
         ui: &mut egui::Ui,
-        opt_cursor: Option<Rc<Path>>,
+        opt_cursor_path_rev: Option<Rc<Path>>,
         path: Rc<Path>,
         t: &Tree,
     ) {
         match t {
             Tree::Leaf => {}
             Tree::Branch(x, ts) => {
-                let is_cursor = match &opt_cursor {
+                let is_cursor = match &opt_cursor_path_rev {
                     Some(cursor) => cursor.is_empty(),
                     None => false,
                 };
@@ -140,12 +185,26 @@ impl Content {
                     .show(ui, |ui| {
                         let button = ui.button(format!("{x}"));
                         if button.clicked() {
-                            self.cursor = path.clone()
+                            self.cursor = Rc::new(path.reverse().clone());
                         }
                         for (step, t) in ts.iter().enumerate() {
+                            let opt_cursor_next = {
+                                match opt_cursor_path_rev {
+                                    Some(ref cursor_path_rev) => match &**cursor_path_rev {
+                                        List::Nil => None,
+                                        List::Cons(step_next, cursor_next)
+                                            if step == *step_next =>
+                                        {
+                                            Some(cursor_next.clone())
+                                        }
+                                        List::Cons(_, _) => None,
+                                    },
+                                    None => None,
+                                }
+                            };
                             self.render_tree(
                                 ui,
-                                opt_cursor.clone(),
+                                opt_cursor_next,
                                 Rc::new(List::Cons(step, path.clone())),
                                 t,
                             );
