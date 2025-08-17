@@ -1,3 +1,11 @@
+/*
+ * Using a linked-list here is fundamentally wrong.
+ * That's just now how Rust is meant to work.
+ * Rust is built on __safe mutability__, which means I have to use that in order to do things ergonomically in Rust.
+ * It's not ergonomic to re-allocate everything all the time since that's not how Rust was built to be used for.
+ * It's built ot make ergonomic the lower-level details of managing when you are touching memory in various ways.
+ */
+
 use std::rc::Rc;
 
 // -----------------------------------------------------------------------------
